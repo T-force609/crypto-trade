@@ -6,8 +6,10 @@ from rest_framework.decorators import permission_classes
 from .models import Wallet, Holding, Transaction
 from market.models import CryptoAsset
 from decimal import Decimal
+from rest_framework import generics
 from .serializers import WalletSerializer, TransactionSerializer
-
+from .models import Deposit, Wallet
+from .serializers import DepositSerializer
 
 class TradeView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -68,14 +70,26 @@ class TradeView(APIView):
 
 @permission_classes([IsAuthenticated])
 class PortfolioView(APIView):
-
     def get(self, request):
         wallet, _ = Wallet.objects.get_or_create(user=request.user)
-        serializer = WalletSerializer(wallet)
-        return Response(serializer.data)
+        holdings = wallet.holdings.all()
+        holdings_data = [
+            {
+                "asset": h.asset.symbol,
+                "quantity": h.quantity,
+                "avg_price": h.avg_price
+            } for h in holdings
+        ]
+        data = {
+            "balance": wallet.balance,
+            "address": wallet.address,
+            "holdings": holdings_data,
+        }
+        return Response(data)
+
     
 
-class TransactionListView(APIView):
+class TransactionListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -83,3 +97,15 @@ class TransactionListView(APIView):
         transactions = wallet.transactions.order_by("-timestamp")
         serializer = TransactionSerializer(transactions, many=True)
         return Response(serializer.data)
+    
+
+class DepositCreateAPIView(generics.CreateAPIView):
+    queryset = Deposit.objects.all()
+    serializer_class = DepositSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        wallet = self.request.user.wallet
+        deposit = serializer.save(user=self.request.user, wallet=wallet)
+        wallet.balance += deposit.amount
+        wallet.save()
