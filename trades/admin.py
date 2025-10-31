@@ -1,8 +1,9 @@
 from django.contrib import admin
-from .models import Wallet, Transaction, Holding
+from .models import Wallet, Transaction, Holding, Deposit
 
 # Register your models here.
 
 admin.site.register(Wallet)
 admin.site.register(Transaction)
 admin.site.register(Holding)
+admin.site.register(Deposit)

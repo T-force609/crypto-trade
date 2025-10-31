@@ -7,7 +7,7 @@ import uuid
 def generate_wallet_address():
     return uuid.uuid4().hex[:32]
 class Wallet(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='wallet')
     balance = models.DecimalField(max_digits=20, decimal_places=2, default=0.00)
     address = models.CharField(max_length=255, unique=True, editable=True, null=True, blank=True)
 
@@ -42,11 +42,11 @@ class Transaction(models.Model):
         return f"{self.tx_type} {self.quantity} {self.asset.symbol}"
 
 class Deposit(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="deposits")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="deposits")
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name="deposits")
     amount = models.DecimalField(max_digits=20, decimal_places=2)
     currency = models.CharField(max_length=10, default="USDT")
-    tx_hash = models.CharField(max_length=100, unique=True)
+    tx_hash = models.CharField(max_length=100, unique=True, default="", blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

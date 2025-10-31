@@ -1,5 +1,6 @@
+from django.contrib.auth.models import User
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import permission_classes
@@ -10,6 +11,7 @@ from rest_framework import generics
 from .serializers import WalletSerializer, TransactionSerializer
 from .models import Deposit, Wallet
 from .serializers import DepositSerializer
+from rest_framework.decorators import api_view
 
 class TradeView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -102,10 +104,95 @@ class TransactionListCreateAPIView(generics.ListCreateAPIView):
 class DepositCreateAPIView(generics.CreateAPIView):
     queryset = Deposit.objects.all()
     serializer_class = DepositSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
         wallet = self.request.user.wallet
         deposit = serializer.save(user=self.request.user, wallet=wallet)
         wallet.balance += deposit.amount
         wallet.save()
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_deposit(request):
+    serializer = DepositSerializer(data=request.data)
+    if serializer.is_valid():
+        wallet, _ = Wallet.objects.get_or_create(user=request.user)
+        deposit = serializer.save(user=request.user, wallet=wallet)
+        return Response(
+            {"message": "Deposit created successfully", "deposit_id": deposit.id},
+            status=status.HTTP_201_CREATED
+        )
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def deposit_funds(request):
+    """
+    Simulate deposit of funds (to admin wallet but credited to user).
+    Expected body:
+    {
+        "amount": "500.00"
+    }
+    """
+    try:
+        amount = Decimal(request.data.get("amount", 0))
+        if amount <= 0:
+            return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
+
+        wallet, _ = Wallet.objects.get_or_create(user=request.user)
+        wallet.balance += amount
+        wallet.save()
+
+        return Response({
+            "detail": f"Deposit of ${amount} successful.",
+            "new_balance": wallet.balance
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def save_wallet_address(request):
+    user = request.user
+    address = request.data.get("address")
+
+    if not address:
+        return Response({"error": "Address required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    wallet, created = Wallet.objects.get_or_create(user=user)
+    wallet.address = address
+    wallet.save()
+
+    return Response({"message": "Wallet address saved successfully", "address": address})
+
+@permission_classes([IsAuthenticated])
+class DepositView(APIView):
+    def post(self, request):
+        coin = request.data.get("coin")
+        amount = request.data.get("amount")
+        wallet_address = request.data.get("wallet_address")
+
+        deposit = Deposit.objects.create(
+            user=request.user,
+            coin=coin,
+            amount=amount,
+            wallet_address=wallet_address
+        )
+        return Response({"detail": "Deposit request created", "id": deposit.id})
+    
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_admin_wallet(request):
+    """Return admin user's wallet address."""
+    try:
+        admin_user = User.objects.filter(is_superuser=True).first()
+        wallet = Wallet.objects.get(user=admin_user)
+        return Response({"address": wallet.address})
+    except Wallet.DoesNotExist:
+        return Response({"detail": "Admin wallet not found"}, status=404)

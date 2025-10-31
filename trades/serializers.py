@@ -2,10 +2,21 @@ from rest_framework import serializers
 from .models import Wallet, Holding, Transaction
 from .models import Deposit
 
+from rest_framework import serializers
+from .models import Deposit
+from market.models import CryptoAsset
+
 class DepositSerializer(serializers.ModelSerializer):
+    coin_id = serializers.PrimaryKeyRelatedField(
+        queryset=CryptoAsset.objects.all(),
+        source='asset',
+        write_only=True
+    )
+
     class Meta:
         model = Deposit
-        fields = ['id', 'amount', 'currency', 'tx_hash', 'timestamp']
+        fields = ['id', 'user', 'coin_id', 'amount', 'currency', 'timestamp', 'wallet']
+        read_only_fields = ['id', 'timestamp']
 
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
