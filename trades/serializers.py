@@ -1,9 +1,6 @@
 from rest_framework import serializers
 from .models import Wallet, Holding, Transaction
 from .models import Deposit
-
-from rest_framework import serializers
-from .models import Deposit
 from market.models import CryptoAsset
 
 class DepositSerializer(serializers.ModelSerializer):
@@ -33,4 +30,4 @@ class WalletSerializer(serializers.ModelSerializer):
     holdings = HoldingSerializer(many=True, read_only=True)
     class Meta:
         model = Wallet
-        fields = ('id', 'balance','holdings', 'address', 'user')
+        fields = ('id','balance','holdings', 'address', 'user')

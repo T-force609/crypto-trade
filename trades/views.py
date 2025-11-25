@@ -93,6 +93,8 @@ class PortfolioView(APIView):
 
 class TransactionListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = TransactionSerializer
+    queryset = Transaction.objects.all()
 
     def get(self, request):
         wallet, _ = Wallet.objects.get_or_create(user=request.user)
@@ -152,6 +154,14 @@ def deposit_funds(request):
         }, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_wallets(request):
+    wallets = Wallet.objects.all()
+    serializer = WalletSerializer(wallets, many=True)
+    return Response(serializer.data, status=200)
     
 
 @api_view(["POST"])

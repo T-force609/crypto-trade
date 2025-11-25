@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import TradeView
 from . import views
-from .views import DepositCreateAPIView, DepositView, get_admin_wallet, create_deposit
+from .views import DepositCreateAPIView, DepositView, get_admin_wallet, create_deposit, get_wallets
+
 
 urlpatterns = [
     path('', TradeView.as_view(), name='trade'),
@@ -12,6 +13,6 @@ urlpatterns = [
     path("save_wallet_address/", views.save_wallet_address, name="save_wallet_address"),
     path("deposit/", DepositView.as_view(), name="deposit"),
     path("admin-wallet/", get_admin_wallet, name="admin-wallet"),
-
+    path("wallets/", get_wallets, name="list_wallets"),
 
 ]
